@@ -1,4 +1,4 @@
-name: Build and Deploy Node App
+name: CI/CD Node App to ECR + EC2
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
     - name: Login to ECR
       uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build and Push Docker Image
+    - name: Build & Push Docker image
       run: |
         docker build -t my-first-node .
         docker tag my-first-node:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/my-first-node:latest
