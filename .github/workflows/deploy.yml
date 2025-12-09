@@ -26,6 +26,10 @@ jobs:
         docker build -t my-first-node .
         docker tag my-first-node:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/my-first-node:latest
         docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/my-first-node:latest
+    - name: Add EC2 to known_hosts
+      run: |
+         mkdir -p ~/.ssh
+         ssh-keyscan -H 13.233.105.174 >> ~/.ssh/known_hosts
 
     - name: Deploy to EC2
       run: |
