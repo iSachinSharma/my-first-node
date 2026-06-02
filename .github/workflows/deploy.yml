@@ -1,43 +1,39 @@
-name: CI/CD Node App to ECR + EC2
+name: Deploy Node App to EC2
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/my-first-node
 
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-south-1
+            echo "Pull latest code"
+            git pull origin main
 
-    - name: Login to ECR
-      uses: aws-actions/amazon-ecr-login@v2
+            echo "Stop old container"
+            docker stop my-first-node || true
+            docker rm my-first-node || true
 
-    - name: Build & Push Docker image
-      run: |
-        docker build -t my-first-node .
-        docker tag my-first-node:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/my-first-node:latest
-        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/my-first-node:latest
+            echo "Build new image"
+            docker build -t my-first-node .
 
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v0.1.6
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+            echo "Run container"
+            docker run -d \
+              --name my-first-node \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              my-first-node
 
-          docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/my-first-node:latest
-          docker stop my-first-node || true
-          docker rm my-first-node || true
-          docker run -d -p 3000:3000 --name my-first-node --restart unless-stopped ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/my-first-node:latest
+            echo "Deployment completed"
